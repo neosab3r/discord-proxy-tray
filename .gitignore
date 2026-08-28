@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+dist/
+build/
+*.egg-info/
+.idea/
+.vscode/
+*.log
+vendor/zapret/
+*.dll
+!presets/
