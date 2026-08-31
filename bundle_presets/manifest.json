@@ -1,5 +1,5 @@
 {
-  "version": "local-dev",
+  "version": "1.10.2",
   "source": "Flowseal/zapret-discord-youtube general*.bat",
   "count": 23,
   "files": [
