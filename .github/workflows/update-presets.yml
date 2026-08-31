@@ -1,0 +1,117 @@
+# Update discord-only presets from Flowseal zapret-discord-youtube.
+#
+# Cannot subscribe to another repo's Releases natively — we poll daily
+# (and on manual run). If Flowseal tag == bundle_presets/version.txt, skip.
+
+name: Update presets
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Regenerate even if Flowseal tag unchanged"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: write
+
+jobs:
+  presets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve Flowseal version
+        id: flowseal
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=$(curl -fsSL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            "https://api.github.com/repos/Flowseal/zapret-discord-youtube/releases/latest" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin).get('tag_name') or '')")
+          if [ -z "$TAG" ]; then
+            TAG="main-$(date -u +%Y%m%d)"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Flowseal tag: $TAG"
+
+          CURRENT=""
+          if [ -f bundle_presets/version.txt ]; then
+            CURRENT=$(tr -d ' \r\n' < bundle_presets/version.txt)
+          fi
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "Current bundle_presets/version.txt: ${CURRENT:-<none>}"
+
+          FORCE="${{ github.event.inputs.force || 'false' }}"
+          if [ "$FORCE" != "true" ] && [ "$CURRENT" = "$TAG" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Same version — skip regenerate"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download Flowseal sources
+        if: steps.flowseal.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.flowseal.outputs.tag }}"
+          URL="https://github.com/Flowseal/zapret-discord-youtube/archive/refs/tags/${TAG}.zip"
+          if ! curl -fsSL -o z.zip "$URL"; then
+            echo "Tag zip failed, trying main branch archive"
+            curl -fsSL -o z.zip \
+              "https://github.com/Flowseal/zapret-discord-youtube/archive/refs/heads/main.zip"
+          fi
+          unzip -q z.zip
+          ROOT=$(find . -maxdepth 1 -type d -name 'zapret-discord-youtube-*' | head -n1)
+          echo "ROOT=$ROOT" >> "$GITHUB_ENV"
+          ls "$ROOT"/general*.bat | head
+
+      - name: Setup Python
+        if: steps.flowseal.outputs.skip != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate presets
+        if: steps.flowseal.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          python scripts/bat_to_presets.py \
+            --zapret "$ROOT" \
+            --out bundle_presets \
+            --discord-only-only \
+            --clean-out \
+            --version "${{ steps.flowseal.outputs.tag }}"
+          python scripts/bat_to_presets.py \
+            --zapret "$ROOT" \
+            --out bundle_presets \
+            --only ALT12 \
+            --also-full \
+            --version "${{ steps.flowseal.outputs.tag }}"
+          echo "version.txt=$(cat bundle_presets/version.txt)"
+          python -c "import json;print('files', len(json.load(open('bundle_presets/manifest.json'))['files']))"
+
+      - name: Commit and push
+        if: steps.flowseal.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bundle_presets
+          if git diff --staged --quiet; then
+            echo "No file changes after generate"
+            exit 0
+          fi
+          git commit -m "chore(presets): sync from Flowseal ${{ steps.flowseal.outputs.tag }}"
+          git push

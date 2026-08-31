@@ -1,132 +1,157 @@
-# Discord Proxy Tray (MVP2)
+# Discord Proxy Tray
 
-Tray app: **drover** (TCP → SOCKS) + **winws** (UDP desync), no console window for zapret.
+Трей-приложение для desktop Discord на Windows: **TCP → локальный SOCKS** и **UDP голос/стримы → DPI desync**, без системного TUN на весь ПК.
 
-Spec: `../mvp2-discord-tray.md`
+[English](README.en.md)
+
+Репозиторий: https://github.com/neosab3r/discord-proxy-tray
 
 ---
 
-## What you need to install
+## Возможности
 
-### 1. Python (already OK if 3.10+)
+- Раздельные тумблеры **TCP proxy** и **Stream desync**
+- Установка `DWrite.dll` + `force-proxy.dll` в Discord `app-*` и поддержка после обновлений клиента
+- Мягкое выключение TCP через `PROXY_ENABLED` (DLL остаются на диске)
+- Автозапуск через Task Scheduler (вход в систему, права администратора) с отложенным восстановлением режимов
+- Пресеты desync: встроенный набор, синхронизация с GitHub, локальный «последний рабочий»
+- Status, toast при критичных/предупреждающих событиях, логи в `data/logs/`
+- Portable: состояние в `data/`, бинарники в `vendor/`
 
-You have **Python 3.14**. Check:
+---
 
-```powershell
-python --version
+## Как это работает
+
+```text
+Discord.exe
+  ├─ TCP  → DWrite.dll → force-proxy.dll → 127.0.0.1:10808 → v2rayN / Happ → VPN
+  └─ UDP  → напрямую + winws (WinDivert desync) → Discord media
 ```
 
-If missing: https://www.python.org/downloads/ — tick **Add python.exe to PATH**.
+Чат, API, CDN и загрузки — в основном **TCP**. Голос, Go Live и WebRTC — в основном **UDP**.  
+Проект — гибрид: SOCKS для TCP, zapret/winws desync для UDP, а не «весь Discord в TUN».
 
-### 2. Project venv + dependencies
+Используемый `force-proxy` — **только TCP**, чтобы UDP оставался для winws.
+
+---
+
+## Требования
+
+1. Windows 10/11; tray лучше запускать **от администратора** (WinDivert).
+2. VPN-клиент с **локальным SOCKS** (по умолчанию `127.0.0.1:10808`), **TUN выключен**, system proxy Clear:
+   - **v2rayN** — inbound SOCKS/mixed
+   - **Happ** — Start + локальный proxy
+3. Desktop Discord.
+
+Бинарники sidecar уже лежат в `vendor/` (см. [licenses/NOTICE.md](licenses/NOTICE.md)).
+
+---
+
+## Быстрый старт
 
 ```powershell
-cd C:\Users\user\Desktop\discordproxy\discord-proxy-tray
+cd discord-proxy-tray
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-```
-
-If Activate is blocked:
-
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-```
-
-### 3. Zapret binaries (required for winws)
-
-Download latest release zip:
-
-https://github.com/Flowseal/zapret-discord-youtube/releases/latest
-
-Unpack so that you have:
-
-```text
-%APPDATA%\DiscordProxyTray\zapret\
-  bin\winws.exe
-  bin\WinDivert.dll
-  bin\WinDivert64.sys
-  bin\ACTIVE_DISCORD_UDP.bin   (and other .bin)
-  lists\...
-  version.txt                  (optional, e.g. 1.10.2)
-```
-
-Or copy from your existing folder:
-
-```powershell
-$dst = "$env:APPDATA\DiscordProxyTray\zapret"
-New-Item -ItemType Directory -Force -Path $dst | Out-Null
-Copy-Item -Recurse "C:\Users\user\Desktop\discordproxy\zapret-discord-youtube-main\bin" $dst\
-Copy-Item -Recurse "C:\Users\user\Desktop\discordproxy\zapret-discord-youtube-main\lists" $dst\
-Copy-Item "C:\Users\user\Desktop\discordproxy\zapret-discord-youtube-main\.service\version.txt" $dst\ -ErrorAction SilentlyContinue
-```
-
-> `bin` must exist next to the release; if your local clone has no `bin`, take it from the **release zip**, not only from the source repo.
-
-### 4. Drover DLL (for TCP proxy)
-
-Download **version.dll** from drover releases:
-
-https://github.com/hdk5/Drover/releases  
-(or the fork you already use)
-
-Put it at:
-
-```text
-C:\Users\user\Desktop\discordproxy\discord-proxy-tray\vendor\drover\version.dll
-```
-
-Until this file is present, tray still writes `drover.ini`, but Discord won’t load the proxy without the DLL.
-
-### 5. Runtime (when testing)
-
-| Component | Role |
-|-----------|------|
-| **v2rayN** | SOCKS `127.0.0.1:10808`, UDP ON, system proxy Clear |
-| **This tray** | Run **as Administrator** (WinDivert / winws) |
-| **Discord** | Restart after drover.ini / version.dll are installed |
-
----
-
-## Run (dev)
-
-```powershell
-cd C:\Users\user\Desktop\discordproxy\discord-proxy-tray
-.\.venv\Scripts\Activate.ps1
 $env:PYTHONPATH = "src"
-# Prefer elevated PowerShell for winws:
+# Желательно elevated PowerShell:
 python -m discord_proxy_tray
 ```
 
-Tray menu: **Enable** / **Disable** / **Check zapret updates** / **Exit**.
-
-- **Enable** → writes `drover.ini`, starts `winws.exe` **without a window**
-- **Disable** → stops `winws`, removes `drover.ini` (DLL kept by default)
-
-Config: `%APPDATA%\DiscordProxyTray\config.json`
+Включите **TCP proxy**, после первой установки DLL один раз перезапустите Discord.  
+Для голоса/стримов включите **Stream desync** и при необходимости смените пресет.
 
 ---
 
-## Project layout
+## Режимы
+
+| TCP | Stream | Типичный результат |
+|-----|--------|--------------------|
+| ON | ON | Чат + голос/стримы (рекомендуется) |
+| ON | OFF | Чат ок; guild voice часто «Не установлен маршрут» |
+| OFF | ON | Только desync; TCP может оставаться заблокированным |
+| OFF | OFF | Soft-off TCP (`PROXY_ENABLED=0`) + останов winws |
+
+Иконка: зелёная — оба, синяя — только TCP, жёлтая — только desync, красная — выкл.
+
+Не совмещайте гибрид с **TUN** у VPN-клиента — ломается схема DLL + winws.
+
+---
+
+## Пресеты
+
+| Слой | Путь |
+|------|------|
+| Встроенные (репозиторий) | `bundle_presets/` |
+| Скачанные | `data/presets/remote/` |
+| Локальные (ваши) | `data/presets/local/` |
+
+Порядок выбора: **local → remote → bundled**.  
+CI обновляет Discord-ориентированные пресеты из [Flowseal/zapret-discord-youtube](https://github.com/Flowseal/zapret-discord-youtube).  
+Пункт меню **Check preset updates** синхронизирует remote; **last working** автоматически не удаляется.
+
+---
+
+## Архитектура
+
+```text
+Tray (Python)
+  ├─ установка force-proxy / soft PROXY_ENABLED + watcher Discord app-*
+  └─ процесс winws + аргументы пресета + WinDivert
+```
+
+Конфиг и логи рантайма: `data/`.  
+Sidecar: `vendor/DWrite.dll`, `vendor/force-proxy.dll`, `vendor/zapret/`.
+
+---
+
+## Стек
+
+| Слой | Технологии |
+|------|------------|
+| Приложение | Python 3.11+, pystray, Pillow, customtkinter, httpx, psutil |
+| TCP | discord-voice-proxy `DWrite.dll` + force-proxy-tcp-only |
+| UDP | winws + WinDivert (сборка Flowseal / bol-van zapret) |
+
+Tray не собирает эти DLL сам — кладёт готовые файлы в `vendor/` и управляет ими.
+
+---
+
+## Ошибки и статус
+
+| Уровень | Примеры | Куда |
+|---------|---------|------|
+| CRITICAL | Нет vendor DLL / winws, нет папки Discord, winws сразу умер | Toast + Status + `data/logs/tray.log` |
+| WARN | Автозапуск нужен от админа, SOCKS недоступен, DLL locked | Toast (с debounce) + Status |
+| INFO | Restore OK, пресет сохранён, папка Discord обновлена | Лог (+ опционально toast) |
+
+---
+
+## Структура репозитория
 
 ```text
 discord-proxy-tray/
-  requirements.txt
-  presets/discord-udp-only.json
-  src/discord_proxy_tray/
-    app.py              # tray UI
-    drover_manager.py
-    zapret_manager.py   # hidden winws
-    preset_updater.py   # version check (auto-download later)
-    config.py
-    paths.py
-  vendor/drover/        # put version.dll here
+  src/                 # код
+  bundle_presets/      # offline-пресеты + CI
+  vendor/              # DWrite, force-proxy, zapret bin/lists
+  licenses/            # тексты лицензий + NOTICE
+  data/                # runtime (не в git)
+  scripts/             # генератор пресетов для CI
+  .github/workflows/   # обновление пресетов
 ```
 
 ---
 
-## Not required yet
+## Лицензии
 
-- PyInstaller (for `.exe` later)
-- Building zapret from source
-- Visual Studio / C++ toolchain
+- **Код этого проекта:** [MIT](LICENSE)
+- **Сторонние компоненты и атрибуция:** [licenses/NOTICE.md](licenses/NOTICE.md)
+
+Кратко: force-proxy и loader `DWrite.dll` — **GPLv3** (исходники по ссылкам в NOTICE); WinDivert — **LGPLv3 / GPLv2**; zapret/winws — **MIT**.
+
+---
+
+## Отказ от ответственности
+
+Инструмент для доступа к Discord в условиях сетевых ограничений. Используйте на свой риск. Авторы zapret, WinDivert, force-proxy и discord-voice-proxy не связаны с этой обёрткой.

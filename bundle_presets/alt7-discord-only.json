@@ -1,0 +1,25 @@
+{
+  "name": "alt7-discord-only",
+  "description": "Discord/STUN (+ discord.media) only - trimmed from general (ALT7).bat",
+  "version": "1.0",
+  "source": "general (ALT7).bat",
+  "discord_only": true,
+  "winws_args": [
+    "--wf-tcp=2053,2083,2087,2096,8443",
+    "--wf-udp=19294-19344,50000-50100",
+    "--new",
+    "--filter-udp=19294-19344,50000-50100",
+    "--filter-l7=discord,stun",
+    "--dpi-desync=fake",
+    "--dpi-desync-fake-discord={bin}/ACTIVE_DISCORD_UDP.bin",
+    "--dpi-desync-fake-stun={bin}/ACTIVE_DISCORD_UDP.bin",
+    "--dpi-desync-repeats=6",
+    "--new",
+    "--filter-tcp=2053,2083,2087,2096,8443",
+    "--hostlist-domains=discord.media",
+    "--dpi-desync=multisplit",
+    "--dpi-desync-split-pos=2,sniext+1",
+    "--dpi-desync-split-seqovl=679",
+    "--dpi-desync-split-seqovl-pattern={bin}/tls_clienthello_www_google_com.bin"
+  ]
+}

@@ -3,12 +3,29 @@ __pycache__/
 .venv/
 venv/
 .env
+.env.*
 dist/
 build/
 *.egg-info/
 .idea/
 .vscode/
 *.log
-vendor/zapret/
-*.dll
-!presets/
+
+# Portable runtime (config, user presets, logs)
+data/
+
+# Private working notes (not for GitHub)
+local_project/
+
+# Secrets
+*.pem
+*.key
+credentials.*
+vpn-credential*
+*_secret*
+
+# Autostart helper generated on the machine
+start_tray.cmd
+
+# Large / redundant vendor leftovers
+vendor/**/*.backup

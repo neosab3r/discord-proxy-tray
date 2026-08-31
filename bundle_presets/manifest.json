@@ -1,0 +1,31 @@
+{
+  "version": "local-dev",
+  "source": "Flowseal/zapret-discord-youtube general*.bat",
+  "count": 23,
+  "files": [
+    "alt-discord-only.json",
+    "alt10-discord-only.json",
+    "alt11-discord-only.json",
+    "alt12-discord-only.json",
+    "alt12.json",
+    "alt13-discord-only.json",
+    "alt2-discord-only.json",
+    "alt3-discord-only.json",
+    "alt4-discord-only.json",
+    "alt5-discord-only.json",
+    "alt6-discord-only.json",
+    "alt7-discord-only.json",
+    "alt8-discord-only.json",
+    "alt9-discord-only.json",
+    "exp-discord-only.json",
+    "fake-tls-auto-alt-discord-only.json",
+    "fake-tls-auto-alt2-discord-only.json",
+    "fake-tls-auto-alt3-discord-only.json",
+    "fake-tls-auto-discord-only.json",
+    "general-discord-only.json",
+    "simple-fake-alt-discord-only.json",
+    "simple-fake-alt2-discord-only.json",
+    "simple-fake-discord-only.json"
+  ],
+  "note": "Client prefers local -> remote -> bundled. last_working never auto-deleted."
+}

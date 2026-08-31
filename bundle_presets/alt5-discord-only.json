@@ -1,9 +1,12 @@
 {
-  "name": "discord-udp-only",
-  "description": "Desync only for Discord/STUN UDP (voice & Go Live). Derived from Flowseal FAKE TLS AUTO ALT.",
+  "name": "alt5-discord-only",
+  "description": "Discord/STUN (+ discord.media) only - trimmed from general (ALT5).bat",
   "version": "1.0",
+  "source": "general (ALT5).bat",
+  "discord_only": true,
   "winws_args": [
-    "--wf-udp=443,19294-19344,50000-50100",
+    "--wf-udp=19294-19344,50000-50100",
+    "--new",
     "--filter-udp=19294-19344,50000-50100",
     "--filter-l7=discord,stun",
     "--dpi-desync=fake",

@@ -1,4 +1,4 @@
-"""Check Flowseal zapret-discord-youtube version (updater stub for MVP)."""
+"""Check Flowseal zapret-discord-youtube version (pack update stub)."""
 
 from __future__ import annotations
 

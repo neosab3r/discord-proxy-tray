@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from .paths import config_path
@@ -11,14 +11,32 @@ from .paths import config_path
 class AppConfig:
     socks_host: str = "127.0.0.1"
     socks_port: int = 10808
-    preset: str = "discord-udp-only"
+    preset: str = "alt12-discord-only"
+    last_working_preset: str | None = None
     discord_path: str | None = None
-    enabled: bool = False
+    tcp_proxy: bool = False
+    stream_desync: bool = False
+    watch_discord: bool = True
+    watch_interval_sec: int = 15
+    autostart: bool = False
     zapret_source: str = "flowseal"  # flowseal | local path later
+    # Raw GitHub folder with version.txt + manifest.json + *.json (CI-updated)
+    presets_remote_base: str = (
+        "https://raw.githubusercontent.com/neosab3r/discord-proxy-tray/main/bundle_presets"
+    )
+    presets_check_on_start: bool = True
+
+    @property
+    def any_enabled(self) -> bool:
+        return self.tcp_proxy or self.stream_desync
 
     def save(self, path: Path | None = None) -> None:
         target = path or config_path()
-        target.write_text(json.dumps(asdict(self), indent=2, ensure_ascii=False), encoding="utf-8")
+        # utf-8 without BOM (PowerShell Set-Content utf8 often adds BOM)
+        target.write_text(
+            json.dumps(asdict(self), indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
 
     @classmethod
     def load(cls, path: Path | None = None) -> AppConfig:
@@ -27,6 +45,12 @@ class AppConfig:
             cfg = cls()
             cfg.save(target)
             return cfg
-        data = json.loads(target.read_text(encoding="utf-8"))
+        # utf-8-sig strips BOM if present
+        data = json.loads(target.read_text(encoding="utf-8-sig"))
+        # Migrate old single "enabled" flag
+        if "enabled" in data:
+            legacy = bool(data.pop("enabled"))
+            data.setdefault("tcp_proxy", legacy)
+            data.setdefault("stream_desync", legacy)
         known = {f.name for f in cls.__dataclass_fields__.values()}  # type: ignore[attr-defined]
         return cls(**{k: v for k, v in data.items() if k in known})
