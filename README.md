@@ -81,15 +81,16 @@ python -m discord_proxy_tray
 
 ## Пресеты
 
-| Слой | Путь |
-|------|------|
-| Встроенные (репозиторий) | `bundle_presets/` |
-| Скачанные | `data/presets/remote/` |
-| Локальные (ваши) | `data/presets/local/` |
+| Слой | Где |
+|------|-----|
+| Репозиторий / CI | `presets/` — источник правды, Action обновляет раз в день |
+| Кэш приложения | `data/presets/remote/` — скачивается с GitHub, если `version.txt` новее |
+| Ваши | `data/presets/local/` — last working и ручные копии |
 
-Порядок выбора: **local → remote → bundled**.  
-CI обновляет Discord-ориентированные пресеты из [Flowseal/zapret-discord-youtube](https://github.com/Flowseal/zapret-discord-youtube).  
-Пункт меню **Check preset updates** синхронизирует remote; **last working** автоматически не удаляется.
+Порядок выбора: **local → remote → `presets/` рядом с приложением**.  
+Папка `presets/` в клоне/релизе — только offline-fallback; обновлять её вручную при каждом релизе не нужно: клиент подтягивает новую версию с GitHub сам.
+
+URL по умолчанию: `…/master/presets`. CI: `.github/workflows/update-presets.yml` из [Flowseal/zapret-discord-youtube](https://github.com/Flowseal/zapret-discord-youtube).
 
 ---
 
@@ -133,7 +134,7 @@ Tray не собирает эти DLL сам — кладёт готовые ф�
 ```text
 discord-proxy-tray/
   src/                 # код
-  bundle_presets/      # offline-пресеты + CI
+  presets/             # desync JSON; CI updates; offline fallback
   vendor/              # DWrite, force-proxy, zapret bin/lists
   licenses/            # тексты лицензий + NOTICE
   data/                # runtime (не в git)

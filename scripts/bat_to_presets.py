@@ -257,7 +257,7 @@ def main() -> int:
     ap.add_argument(
         "--out",
         type=Path,
-        default=Path(__file__).resolve().parents[1] / "bundle_presets",
+        default=Path(__file__).resolve().parents[1] / "presets",
         help="Output presets directory",
     )
     ap.add_argument(

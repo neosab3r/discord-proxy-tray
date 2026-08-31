@@ -1,5 +1,5 @@
 {
-  "version": "1.10.2",
+  "version": "local-dev",
   "source": "Flowseal/zapret-discord-youtube general*.bat",
   "count": 23,
   "files": [
@@ -27,5 +27,5 @@
     "simple-fake-alt2-discord-only.json",
     "simple-fake-discord-only.json"
   ],
-  "note": "Client prefers local -> remote -> bundled. last_working never auto-deleted."
+  "note": "Client prefers local -> data/presets/remote -> shipped presets/. last_working never auto-deleted."
 }

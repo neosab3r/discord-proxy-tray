@@ -81,15 +81,16 @@ Do not combine this hybrid with VPN **TUN** mode — it fights DLL + winws routi
 
 ## Presets
 
-| Layer | Path |
-|-------|------|
-| Bundled (shipped / git) | `bundle_presets/` |
-| Remote (downloaded) | `data/presets/remote/` |
-| Local (saved by you) | `data/presets/local/` |
+| Layer | Where |
+|-------|--------|
+| Repo / CI | `presets/` — source of truth; Action updates daily |
+| App cache | `data/presets/remote/` — downloaded when GitHub `version.txt` is newer |
+| Yours | `data/presets/local/` — last working and manual copies |
 
-Resolve order: **local → remote → bundled**.  
-CI updates Discord-oriented presets from [Flowseal/zapret-discord-youtube](https://github.com/Flowseal/zapret-discord-youtube).  
-Menu **Check preset updates** syncs remote JSON; **last working** is never wiped automatically.
+Resolve order: **local → remote → shipped `presets/`**.  
+The repo folder is only an offline fallback; you do not need to refresh it on every app release — the client syncs from GitHub.
+
+Default URL: `…/master/presets`. CI: `.github/workflows/update-presets.yml` from [Flowseal/zapret-discord-youtube](https://github.com/Flowseal/zapret-discord-youtube).
 
 ---
 
@@ -133,7 +134,7 @@ The tray does not build those DLLs; it vendors and orchestrates them.
 ```text
 discord-proxy-tray/
   src/                 # application
-  bundle_presets/      # offline desync presets + CI pack
+  presets/             # desync JSON; CI updates; offline fallback
   vendor/              # DWrite, force-proxy, zapret bin/lists
   licenses/            # third-party texts + NOTICE
   data/                # created at runtime (not in git)

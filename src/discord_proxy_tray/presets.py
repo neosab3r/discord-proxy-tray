@@ -1,4 +1,4 @@
-"""Resolve and manage winws presets (bundled / remote / local)."""
+"""Resolve and manage winws presets (local / remote cache / shipped)."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ SKIP_PRESET_NAMES = frozenset({"manifest", "README", "index"})
 
 
 def resolve_preset_path(name: str) -> Path | None:
-    """Prefer local → remote → bundled. `name` without .json."""
+    """Prefer local → remote cache → shipped presets/. `name` without .json."""
     if not isinstance(name, str):
         return None
     stem = name.removesuffix(".json")

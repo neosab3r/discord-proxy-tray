@@ -12,9 +12,9 @@ from .presets import remote_presets_dir
 
 log = logging.getLogger(__name__)
 
-# Default: bundle_presets/ on the tray repo default branch (CI commits here).
+# Default: presets/ on the tray repo (CI updates daily; client caches into data/presets/remote/).
 DEFAULT_PRESETS_BASE = (
-    "https://raw.githubusercontent.com/neosab3r/discord-proxy-tray/main/bundle_presets"
+    "https://raw.githubusercontent.com/neosab3r/discord-proxy-tray/master/presets"
 )
 
 

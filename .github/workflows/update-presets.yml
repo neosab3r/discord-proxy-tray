@@ -1,7 +1,7 @@
-# Update discord-only presets from Flowseal zapret-discord-youtube.
+# Update Discord desync presets from Flowseal zapret-discord-youtube.
 #
-# Cannot subscribe to another repo's Releases natively — we poll daily
-# (and on manual run). If Flowseal tag == bundle_presets/version.txt, skip.
+# Polls daily (and on manual run). If Flowseal tag == presets/version.txt, skip
+# unless force=true. App clients download this folder into data/presets/remote/.
 
 name: Update presets
 
@@ -47,11 +47,11 @@ jobs:
           echo "Flowseal tag: $TAG"
 
           CURRENT=""
-          if [ -f bundle_presets/version.txt ]; then
-            CURRENT=$(tr -d ' \r\n' < bundle_presets/version.txt)
+          if [ -f presets/version.txt ]; then
+            CURRENT=$(tr -d ' \r\n' < presets/version.txt)
           fi
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
-          echo "Current bundle_presets/version.txt: ${CURRENT:-<none>}"
+          echo "Current presets/version.txt: ${CURRENT:-<none>}"
 
           FORCE="${{ github.event.inputs.force || 'false' }}"
           if [ "$FORCE" != "true" ] && [ "$CURRENT" = "$TAG" ]; then
@@ -89,18 +89,18 @@ jobs:
           set -euo pipefail
           python scripts/bat_to_presets.py \
             --zapret "$ROOT" \
-            --out bundle_presets \
+            --out presets \
             --discord-only-only \
             --clean-out \
             --version "${{ steps.flowseal.outputs.tag }}"
           python scripts/bat_to_presets.py \
             --zapret "$ROOT" \
-            --out bundle_presets \
+            --out presets \
             --only ALT12 \
             --also-full \
             --version "${{ steps.flowseal.outputs.tag }}"
-          echo "version.txt=$(cat bundle_presets/version.txt)"
-          python -c "import json;print('files', len(json.load(open('bundle_presets/manifest.json'))['files']))"
+          echo "version.txt=$(cat presets/version.txt)"
+          python -c "import json;print('files', len(json.load(open('presets/manifest.json'))['files']))"
 
       - name: Commit and push
         if: steps.flowseal.outputs.skip != 'true'
@@ -108,7 +108,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add bundle_presets
+          git add presets
           if git diff --staged --quiet; then
             echo "No file changes after generate"
             exit 0

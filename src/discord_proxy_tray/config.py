@@ -22,7 +22,7 @@ class AppConfig:
     zapret_source: str = "flowseal"  # flowseal | local path later
     # Raw GitHub folder with version.txt + manifest.json + *.json (CI-updated)
     presets_remote_base: str = (
-        "https://raw.githubusercontent.com/neosab3r/discord-proxy-tray/main/bundle_presets"
+        "https://raw.githubusercontent.com/neosab3r/discord-proxy-tray/master/presets"
     )
     presets_check_on_start: bool = True
 
@@ -52,5 +52,11 @@ class AppConfig:
             legacy = bool(data.pop("enabled"))
             data.setdefault("tcp_proxy", legacy)
             data.setdefault("stream_desync", legacy)
+        # Migrate old presets raw URL (main/bundle_presets → master/presets)
+        base = data.get("presets_remote_base")
+        if isinstance(base, str) and (
+            "/bundle_presets" in base or "/main/presets" in base
+        ):
+            data["presets_remote_base"] = cls.presets_remote_base
         known = {f.name for f in cls.__dataclass_fields__.values()}  # type: ignore[attr-defined]
         return cls(**{k: v for k, v in data.items() if k in known})

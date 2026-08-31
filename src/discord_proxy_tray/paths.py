@@ -49,13 +49,17 @@ def zapret_dir() -> Path:
     return path
 
 
-def bundled_presets_dir() -> Path:
-    """Offline preset pack shipped with the app (git: bundle_presets/)."""
+def shipped_presets_dir() -> Path:
+    """Repo/release `presets/` next to the app (offline fallback)."""
     root = project_root()
-    for name in ("bundle_presets", "presets"):
+    for name in ("presets", "bundle_presets"):  # legacy folder name
         path = root / name
         if path.is_dir():
             return path
-    path = root / "bundle_presets"
+    path = root / "presets"
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+# Back-compat alias
+bundled_presets_dir = shipped_presets_dir
