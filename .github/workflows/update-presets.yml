@@ -48,10 +48,21 @@ jobs:
 
           CURRENT=""
           if [ -f presets/version.txt ]; then
-            CURRENT=$(tr -d ' \r\n' < presets/version.txt)
+            CURRENT=$(head -n1 presets/version.txt | tr -d ' \r\n')
           fi
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
           echo "Current presets/version.txt: ${CURRENT:-<none>}"
+
+          PUBLISHED=$(curl -fsSL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            "https://api.github.com/repos/Flowseal/zapret-discord-youtube/releases/latest" \
+            | python3 -c "import sys,json; print((json.load(sys.stdin).get('published_at') or '')[:10])")
+          if [ -z "$PUBLISHED" ]; then
+            PUBLISHED=$(date -u +%Y-%m-%d)
+          fi
+          echo "published=$PUBLISHED" >> "$GITHUB_OUTPUT"
+          echo "Flowseal published: $PUBLISHED"
 
           FORCE="${{ github.event.inputs.force || 'false' }}"
           if [ "$FORCE" != "true" ] && [ "$CURRENT" = "$TAG" ]; then
@@ -92,13 +103,15 @@ jobs:
             --out presets \
             --discord-only-only \
             --clean-out \
-            --version "${{ steps.flowseal.outputs.tag }}"
+            --version "${{ steps.flowseal.outputs.tag }}" \
+            --released "${{ steps.flowseal.outputs.published }}"
           python scripts/bat_to_presets.py \
             --zapret "$ROOT" \
             --out presets \
             --only ALT12 \
             --also-full \
-            --version "${{ steps.flowseal.outputs.tag }}"
+            --version "${{ steps.flowseal.outputs.tag }}" \
+            --released "${{ steps.flowseal.outputs.published }}"
           echo "version.txt=$(cat presets/version.txt)"
           python -c "import json;print('files', len(json.load(open('presets/manifest.json'))['files']))"
 

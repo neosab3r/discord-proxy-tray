@@ -1,0 +1,20 @@
+# Lucide stroke icons (https://github.com/lucide-icons/lucide/tree/main/icons)
+#
+# All files: {name}.svg in this folder.
+# Re-download: python scripts/fetch_lucide_icons.py
+#
+# Tray glyph is NOT here — generated in ui/tray_icon.py from design mock.
+#
+# Panel icons:
+#   info            hints (TUN, Discord, startup)
+#   check           save / applied
+#   folder-open     open logs
+#   refresh-cw      status refresh
+#   copy            copy status
+#   triangle-alert  alerts row (future)
+#   chevron-down    preset group open
+#   chevron-right   preset group closed
+#   circle-dot      use preset
+#   star            last working
+#   trash-2         delete local
+#   loader-2          sync spinner (file from lucide loader-circle)

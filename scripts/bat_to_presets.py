@@ -282,6 +282,11 @@ def main() -> int:
         help="Preset pack version (Flowseal tag). Written to version.txt + manifest.",
     )
     ap.add_argument(
+        "--released",
+        default="",
+        help="ISO release date YYYY-MM-DD for version.txt second line (default: today UTC).",
+    )
+    ap.add_argument(
         "--clean-out",
         action="store_true",
         help="Delete existing *.json in --out before writing (keeps version.txt until rewritten)",
@@ -338,7 +343,16 @@ def main() -> int:
                 written_files.append(path.name)
 
     pack_version = (args.version or "").strip() or "dev"
-    (args.out / "version.txt").write_text(pack_version + "\n", encoding="utf-8")
+    released_raw = (args.released or "").strip()
+    if released_raw:
+        released_line = released_raw
+    else:
+        from datetime import datetime, timezone
+
+        released_line = datetime.now(timezone.utc).date().isoformat()
+    (args.out / "version.txt").write_text(
+        f"{pack_version}\n{released_line}\n", encoding="utf-8"
+    )
 
     # Manifest lists everything currently in out/ (supports multi-pass CI runs)
     written_files = sorted(
@@ -348,6 +362,7 @@ def main() -> int:
     )
     manifest = {
         "version": pack_version,
+        "released": released_line,
         "source": "Flowseal/zapret-discord-youtube general*.bat",
         "count": len(written_files),
         "files": written_files,
@@ -357,7 +372,10 @@ def main() -> int:
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
-    print(f"done, {len(written_files)} presets version={pack_version} -> {args.out}")
+    print(
+        f"done, {len(written_files)} presets version={pack_version} "
+        f"released={released_line} -> {args.out}"
+    )
     return 0 if written_files else 2
 
 

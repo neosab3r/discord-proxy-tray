@@ -6,6 +6,7 @@ venv/
 .env.*
 dist/
 build/
+release/
 *.egg-info/
 .idea/
 .vscode/

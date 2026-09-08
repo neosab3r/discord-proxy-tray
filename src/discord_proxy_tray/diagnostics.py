@@ -79,11 +79,13 @@ def build_status(
     alerts: AlertBus | None = None,
 ) -> str:
     discord_dir = Path(config.discord_path) if config.discord_path else latest_discord_dir()
-    vendor_miss = missing_force_proxy_vendor()
+    strat = "full_proxy" if config.proxy_strategy == "full_proxy" else "hybrid"
+    vendor_miss = missing_force_proxy_vendor(strategy=strat)
     zapret_miss = missing_zapret_bin()
     lines = [
         f"tcp_proxy={config.tcp_proxy}",
         f"stream_desync={config.stream_desync}",
+        f"proxy_strategy={config.proxy_strategy}",
         f"preset={config.preset}",
         f"last_working_preset={config.last_working_preset or '-'}",
         f"socks={config.socks_host}:{config.socks_port} reachable={socks_ok}",
@@ -97,6 +99,30 @@ def build_status(
         f"watch_discord={config.watch_discord} interval={config.watch_interval_sec}s",
         f"autostart={config.autostart}",
     ]
+    lines.append(
+        f"tun_paused={config.tun_paused} "
+        f"resume_tcp={config.resume_tcp_proxy} "
+        f"resume_stream={config.resume_stream_desync} "
+        f"resume_strategy={config.resume_proxy_strategy}"
+    )
+    try:
+        from .tun_check import suspect_tun_adapters
+
+        tuns = suspect_tun_adapters()
+        lines.append("tun_suspect=" + (",".join(tuns) if tuns else "none"))
+    except Exception:
+        lines.append("tun_suspect=?")
+    try:
+        from .discord_modules import discord_module_status
+
+        ms = discord_module_status()
+        lines.append(
+            f"dll_loaded force-proxy={ms.force_proxy_loaded} "
+            f"dwrite={ms.dwrite_loaded} pids={ms.pids_checked} "
+            f"discord_running={ms.discord_running}"
+        )
+    except Exception:
+        lines.append("dll_loaded=?")
     try:
         from .remote_presets import RemotePresetSync
 

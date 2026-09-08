@@ -32,6 +32,7 @@ class DiscordFolderWatcher:
         interval_sec: float = 15.0,
         on_notify: Callable[[str, str], None] | None = None,
         on_latest_changed: Callable[[Path], None] | None = None,
+        on_fresh_dll_install: Callable[[], None] | None = None,
     ) -> None:
         self._should_maintain = should_maintain
         self._socks = socks
@@ -40,6 +41,7 @@ class DiscordFolderWatcher:
         self.interval_sec = max(5.0, float(interval_sec))
         self._on_notify = on_notify
         self._on_latest_changed = on_latest_changed
+        self._on_fresh_dll_install = on_fresh_dll_install
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self.last_app_name: str | None = None
@@ -118,7 +120,8 @@ class DiscordFolderWatcher:
             self.last_check_ok = True
             return
 
-        missing = not dlls_present(latest) or not (latest / PROXY_TXT_NAME).is_file()
+        had_dlls = dlls_present(latest)
+        missing = not had_dlls or not (latest / PROXY_TXT_NAME).is_file()
         if not new_folder and not missing:
             self.last_note = f"ok {latest.name}"
             self.last_check_ok = True
@@ -137,7 +140,10 @@ class DiscordFolderWatcher:
             self.last_note = note
             self.last_check_ok = True
             log.info("watcher install %s: %s", latest.name, note)
-            if new_folder:
+            fresh_dlls = not had_dlls and dlls_present(latest)
+            if fresh_dlls and self._on_fresh_dll_install:
+                self._on_fresh_dll_install()
+            elif new_folder:
                 self._notify(
                     "DiscordProxyTray",
                     f"New Discord folder {latest.name}: DLLs updated. "

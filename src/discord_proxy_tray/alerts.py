@@ -34,6 +34,10 @@ class AlertBus:
         self._toast: Callable[[str, str], None] | None = None
         self._last_toast_key: str | None = None
         self._last_toast_at = 0.0
+        # Tooltip shows CRITICAL until user acks (Status → Dismiss).
+        self._critical_ack_ts = 0.0
+        # WARN toast at most once per code per process lifetime (unless toast=True forced).
+        self._warn_toasted: set[str] = set()
 
     def set_toast(self, fn: Callable[[str, str], None] | None) -> None:
         self._toast = fn
@@ -47,6 +51,29 @@ class AlertBus:
             if severity is None or a.severity == severity:
                 return a
         return None
+
+    def pending_critical(self) -> Alert | None:
+        """Latest CRITICAL that has not been dismissed."""
+        a = self.latest(Severity.CRITICAL)
+        if a is not None and a.ts > self._critical_ack_ts:
+            return a
+        return None
+
+    def ack_critical(self) -> bool:
+        """Dismiss sticky CRITICAL from tray tooltip. Returns True if something was pending."""
+        a = self.pending_critical()
+        if a is None:
+            return False
+        self._critical_ack_ts = time.time()
+        return True
+
+    def clear_code(self, code: str) -> int:
+        """Remove alerts with this code (e.g. resolved socks_down). Returns count removed."""
+        before = len(self._items)
+        kept = [a for a in self._items if a.code != code]
+        self._items.clear()
+        self._items.extend(kept)
+        return before - len(self._items)
 
     def emit(
         self,
@@ -67,7 +94,19 @@ class AlertBus:
 
         do_toast = toast
         if do_toast is None:
-            do_toast = severity in (Severity.CRITICAL, Severity.WARN)
+            if severity == Severity.CRITICAL:
+                do_toast = True
+            elif severity == Severity.WARN:
+                if code in self._warn_toasted:
+                    do_toast = False
+                else:
+                    self._warn_toasted.add(code)
+                    do_toast = True
+            else:
+                do_toast = False
+        elif severity == Severity.WARN and do_toast:
+            self._warn_toasted.add(code)
+
         if do_toast and self._toast:
             key = f"{severity.value}:{code}"
             now = time.monotonic()

@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 APP_NAME = "DiscordProxyTray"
 
 
 def project_root() -> Path:
+    """Directory with presets/, vendor/, data/ — exe folder when frozen."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parents[2]
 
 

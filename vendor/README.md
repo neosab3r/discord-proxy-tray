@@ -5,21 +5,43 @@ Sidecar binaries used by the tray (included in this repository).
 ```text
 vendor/
   DWrite.dll                 # discord-voice-proxy loader
-  force-proxy.dll            # TCP-only force-proxy
+  force-proxy.dll            # legacy alias (= force-proxy-tcp.dll)
+  force-proxy-tcp.dll        # TCP-only (Hybrid + winws) — PROXY_ENABLED / PROXY_LOG
+  force-proxy-full.dll       # TCP+UDP SOCKS — same soft toggles
   zapret/
-    bin/                     # winws, WinDivert, fake payloads, cygwin1.dll
-    lists/                   # hostlists / ipsets for presets
+    bin/                     # winws, WinDivert, fake payloads
+    lists/
     version.txt
 ```
 
-Optional layout also supported by the code: `vendor/force-proxy/DWrite.dll` + `force-proxy.dll`.
+## Strategies
 
-## Upstream sources (updates)
+| Mode | DLL copied into Discord as `force-proxy.dll` | Stream / presets |
+|------|----------------------------------------------|------------------|
+| **Hybrid** | `force-proxy-tcp.dll` | winws + presets (admin) |
+| **Full** | `force-proxy-full.dll` | disabled |
+
+Both DLLs are built from [`force-proxy-with-logs`](https://github.com/neosab3r/force-proxy-with-logs) (local tree often at `../force-proxy/`):
+
+```powershell
+msbuild force-proxy.sln /p:Configuration=Release /p:Platform=x64
+msbuild force-proxy.sln /p:Configuration=ReleaseFull /p:Platform=x64
+```
+
+Outputs: `force-proxy\x64\Release\force-proxy-tcp.dll` and
+`force-proxy\x64\ReleaseFull\force-proxy-full.dll`.
+
+Sync into this folder (from tray repo root):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/sync_force_proxy_vendor.ps1
+```
+
+## Other sources
 
 | File | Source |
 |------|--------|
-| `DWrite.dll` | [runetfreedom/discord-voice-proxy releases](https://github.com/runetfreedom/discord-voice-proxy/releases) |
-| `force-proxy.dll` | [neosab3r/force-proxy-tcp-only](https://github.com/neosab3r/force-proxy-tcp-only) |
-| `zapret/bin`, `zapret/lists` | [Flowseal/zapret-discord-youtube releases](https://github.com/Flowseal/zapret-discord-youtube/releases) |
+| `DWrite.dll` | [runetfreedom/discord-voice-proxy](https://github.com/runetfreedom/discord-voice-proxy/releases) |
+| `zapret/bin` | [Flowseal/zapret-discord-youtube](https://github.com/Flowseal/zapret-discord-youtube/releases) |
 
-License texts and attribution: [licenses/NOTICE.md](../licenses/NOTICE.md).
+License texts: [licenses/NOTICE.md](../licenses/NOTICE.md).
