@@ -10,8 +10,12 @@ APP_NAME = "DiscordProxyTray"
 
 
 def project_root() -> Path:
-    """Directory with presets/, vendor/, data/ — exe folder when frozen."""
-    if getattr(sys, "frozen", False):
+    """Directory with presets/, vendor/, data/ — exe folder when frozen.
+
+    PyInstaller onedir: ``<release>/DiscordProxyTray.exe`` → ``<release>/``.
+    Dev: repo root (parent of ``src/``).
+    """
+    if getattr(sys, "frozen", False) or hasattr(sys, "_MEIPASS"):
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parents[2]
 

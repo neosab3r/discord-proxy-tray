@@ -118,15 +118,18 @@ class TrayApp:
             should_maintain=lambda: (
                 self.config.tcp_proxy
                 and not self.config.tun_paused
-                and not self.tun_present()
+                and not self.tun_present_cached()
             ),
             socks=lambda: (self.config.socks_host, self.config.socks_port),
             proxy_enabled=lambda: (
                 self.config.tcp_proxy
                 and not self.config.tun_paused
-                and not self.tun_present()
+                and not self.tun_present_cached()
             ),
             vendor_dir=lambda: vendor_force_proxy_dir(project_root()),
+            strategy=lambda: (
+                "full_proxy" if self.config.is_full_proxy else "hybrid"
+            ),
             interval_sec=float(self.config.watch_interval_sec),
             on_notify=lambda title, msg: self.alerts.emit(
                 Severity.WARN, "watcher", msg, toast=True
@@ -140,7 +143,20 @@ class TrayApp:
             self.config.save()
         except OSError:
             pass
-        log.info("app init; log=%s", self.log_file)
+        # Keep start_tray.cmd pointed at *this* build (release vs project).
+        if self.config.autostart:
+            try:
+                from .autostart import write_launcher
+
+                write_launcher()
+            except OSError:
+                log.exception("failed to refresh autostart launcher")
+        log.info(
+            "app init; frozen=%s root=%s log=%s",
+            getattr(sys, "frozen", False),
+            project_root(),
+            self.log_file,
+        )
         threading.Thread(target=self._startup_preflight, name="preflight", daemon=True).start()
 
     def readiness(self):

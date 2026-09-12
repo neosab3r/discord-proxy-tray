@@ -48,16 +48,61 @@ OUR_DISCORD_NAMES = (
 ProxyStrategy = Literal["hybrid", "full_proxy"]
 
 
+def _app_version_key(name: str) -> tuple[int, ...]:
+    """Parse app-1.0.9257 → (1, 0, 9257) for numeric ordering (not lexicographic)."""
+    if not name.lower().startswith("app-"):
+        return (0,)
+    parts = name.split("-", 1)[1].split(".")
+    nums: list[int] = []
+    for part in parts:
+        try:
+            nums.append(int(part))
+        except ValueError:
+            digits = "".join(c for c in part if c.isdigit())
+            nums.append(int(digits) if digits else 0)
+    return tuple(nums) if nums else (0,)
+
+
 def find_discord_app_dirs() -> list[Path]:
     local = Path(os.environ.get("LOCALAPPDATA", "")) / "Discord"
     if not local.is_dir():
         return []
-    return sorted(local.glob("app-*"), key=lambda p: p.name, reverse=True)
+    dirs = [p for p in local.glob("app-*") if p.is_dir()]
+    return sorted(dirs, key=lambda p: _app_version_key(p.name), reverse=True)
+
+
+def running_discord_app_dir() -> Path | None:
+    """app-* folder of a live Discord.exe (preferred target for DLL installs)."""
+    try:
+        import psutil
+    except ImportError:
+        return None
+    for proc in psutil.process_iter(["name", "exe"]):
+        try:
+            name = (proc.info.get("name") or "").lower()
+            if name not in ("discord.exe", "discordptb.exe", "discordcanary.exe"):
+                continue
+            exe = proc.info.get("exe")
+            if not exe:
+                continue
+            parent = Path(exe).resolve().parent
+            if parent.name.lower().startswith("app-") and parent.is_dir():
+                return parent
+        except (psutil.Error, OSError, TypeError, ValueError):
+            continue
+    return None
 
 
 def latest_discord_dir() -> Path | None:
+    """Prefer the running client folder; else newest app-* that has Discord.exe."""
+    running = running_discord_app_dir()
+    if running is not None:
+        return running
     dirs = find_discord_app_dirs()
-    return dirs[0] if dirs else None
+    if not dirs:
+        return None
+    with_exe = [d for d in dirs if (d / "Discord.exe").is_file()]
+    return (with_exe or dirs)[0]
 
 
 def vendor_force_proxy_dir(project_root: Path) -> Path:

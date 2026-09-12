@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .force_proxy_manager import (
     PROXY_TXT_NAME,
+    ProxyStrategy,
     dlls_present,
     find_discord_app_dirs,
     install_force_proxy,
@@ -29,6 +30,7 @@ class DiscordFolderWatcher:
         socks: Callable[[], tuple[str, int]],
         proxy_enabled: Callable[[], bool],
         vendor_dir: Callable[[], Path],
+        strategy: Callable[[], ProxyStrategy] | None = None,
         interval_sec: float = 15.0,
         on_notify: Callable[[str, str], None] | None = None,
         on_latest_changed: Callable[[Path], None] | None = None,
@@ -38,6 +40,7 @@ class DiscordFolderWatcher:
         self._socks = socks
         self._proxy_enabled = proxy_enabled
         self._vendor_dir = vendor_dir
+        self._strategy = strategy or (lambda: "hybrid")
         self.interval_sec = max(5.0, float(interval_sec))
         self._on_notify = on_notify
         self._on_latest_changed = on_latest_changed
@@ -49,6 +52,8 @@ class DiscordFolderWatcher:
         self.last_note: str = ""
         self._last_notify_key: str | None = None
         self._last_notify_at = 0.0
+        # Auto-restart Discord at most once per app-* (avoids update wipe loops).
+        self._restarted_for: set[str] = set()
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -104,6 +109,12 @@ class DiscordFolderWatcher:
             self.last_check_ok = True
             return
 
+        # Skip incomplete update folders (Update.exe still extracting).
+        if not (latest / "Discord.exe").is_file():
+            self.last_note = f"wait {latest.name} (no Discord.exe yet)"
+            self.last_check_ok = True
+            return
+
         new_folder = (
             self.last_app_name is not None and latest.name != self.last_app_name
         )
@@ -129,6 +140,7 @@ class DiscordFolderWatcher:
 
         host, port = self._socks()
         vendor = self._vendor_dir()
+        strat = self._strategy()
         try:
             note = install_force_proxy(
                 latest,
@@ -136,13 +148,35 @@ class DiscordFolderWatcher:
                 port,
                 vendor,
                 enabled=self._proxy_enabled(),
+                strategy=strat,
             )
             self.last_note = note
             self.last_check_ok = True
             log.info("watcher install %s: %s", latest.name, note)
             fresh_dlls = not had_dlls and dlls_present(latest)
             if fresh_dlls and self._on_fresh_dll_install:
-                self._on_fresh_dll_install()
+                if latest.name not in self._restarted_for:
+                    self._restarted_for.add(latest.name)
+                    log.info(
+                        "auto-restart Discord once after fresh DLLs in %s",
+                        latest.name,
+                    )
+                    self._on_fresh_dll_install()
+                else:
+                    # Discord updates often wipe a new app-* after first launch.
+                    # Re-copy DLLs quietly; do not kill the client in a loop.
+                    log.warning(
+                        "DLLs missing again in %s after prior auto-restart — "
+                        "reinstalled without restart",
+                        latest.name,
+                    )
+                    self._notify(
+                        "DiscordProxyTray",
+                        f"DLLs restored in {latest.name} again. "
+                        "If TCP fails, restart Discord once manually "
+                        "(Modes → after update finishes).",
+                        key=f"rerestore:{latest.name}",
+                    )
             elif new_folder:
                 self._notify(
                     "DiscordProxyTray",

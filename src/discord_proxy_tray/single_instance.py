@@ -43,7 +43,13 @@ class InstanceGuard(QObject):
             sock.write(cmd.encode("utf-8"))
             sock.waitForBytesWritten(1500)
             sock.disconnectFromServer()
-            log.info("forwarded %s to running instance", cmd)
+            log.info(
+                "forwarded %s to running instance — this process exits; "
+                "logs stay with the already-running tray "
+                "(if you expected the release exe, quit the old "
+                "python/autostart instance first)",
+                cmd,
+            )
             return False
         return self._listen()
 
